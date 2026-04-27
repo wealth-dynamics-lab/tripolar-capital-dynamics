@@ -2,21 +2,24 @@ import numpy as np
 
 def compute_E_total(M, C_eff, R_geom, F_thermal, G_redundancy):
     """
-    三极资本动力学张量耦合公式 (对应论文 Formula 3)
-    计算系统总破坏能 E_total，作为核心风险序参数
+    Tripolar Capital Dynamics Tensor Coupling Formula (Paper Formula 3).
+    Calculates the systemic destructive energy E_total as the core risk parameter.
+    Reference: Section 2.5, Equation 2.13.
     """
     return M * (C_eff**2) * (1 / R_geom) * F_thermal * G_redundancy
 
 def run_monte_carlo_simulation(params, N=5000, T=200, dt=0.01, n_paths=10000):
     """
-    基于 Euler-Maruyama 离散化方案的 Monte Carlo 路径模拟
-    对应论文第 4.1 节及附录 D.1 逻辑
+    Monte Carlo Path Simulation using Euler-Maruyama discretization.
+    Simulates individual wealth evolution paths (Langevin SDE).
+    Reference: Section 2.1 (Formula 2.1) and Section 4.1.
     """
-    # 初始化财富/资本矩阵 (路径数, 时间步)
+    # Initialize wealth/capital matrix (paths, time steps)
+    # Using large-N mean-field approximation as per Section 2.3
     M_traj = np.zeros((n_paths, T))
-    M_traj[:, 0] = params.get('M0', 1.0) # 初始资本
+    M_traj[:, 0] = params.get('M0', 1.0) 
     
-    # 提取三极参数
+    # Extract tripolar parameters
     C = params['C']
     R = params['R']
     Phi = params['Phi']
@@ -26,25 +29,28 @@ def run_monte_carlo_simulation(params, N=5000, T=200, dt=0.01, n_paths=10000):
     sigma_L = params['sigma_L']
 
     for t in range(1, T):
-        # 产生两个独立的维纳过程增量 dW_C 和 dW_L
+        # Generate two independent standard Wiener processes dW_C and dW_L
+        # Reference: Section 2.1, Equation 2.1
         dW = np.random.normal(0, np.sqrt(dt), (n_paths, 2))
         
-        # 计算漂移项 (Drift term): 资本增长受信息结构极约束
-        # 对应论文公式 (2.1)
+        # Calculate the Drift Term
+        # Characterizes net growth constrained by the Information Structure Pole
         drift = (C * M_traj[:, t-1] * (1 - R * Phi / M_target) + eta * M_target / N)
         
-        # 计算扩散项 (Diffusion term): 包含乘性资本噪声和加性劳动噪声
+        # Calculate the Diffusion Term
+        # Reflects dual uncertainty: capital return noise and labor income noise
         diffusion = (sigma_C * M_traj[:, t-1] * dW[:, 0] + sigma_L * dW[:, 1])
         
-        # 财富演化更新
+        # Update capital evolution
         M_traj[:, t] = M_traj[:, t-1] + drift * dt + diffusion
         
-    # 返回大样本下的平均演化轨迹
+    # Return the mean evolution trajectory across all simulation paths
     return M_traj.mean(axis=0)
 
-def calculate_effective_params(C, lambda_ratio, kappa=0.8):
+def calculate_effective_circulation(C, lambda_ratio, kappa=0.8):
     """
-    计算有效循环速度 C_eff (引入临界减慢效应 CSD)
-    对应论文第 2.4.1 节逻辑
+    Calculates Effective Circulation Velocity (C_eff).
+    Incorporates the Critical Slowing Down (CSD) effect.
+    Reference: Section 2.4.1, Equation 2.9.
     """
     return C * (1 + kappa * (lambda_ratio - 1))
