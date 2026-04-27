@@ -4,28 +4,32 @@ from statsmodels.tsa.filters.hp_filter import hpfilter
 
 class DataPreprocessor:
     """
-    数据预处理模块：执行 HP 滤波、Min-Max 标准化及趋势外推
-    对应论文第 3.2 节及 3.4.2 节逻辑
+    Data Preprocessing Module: Implements HP Filtering, Min-Max Normalization, 
+    and Trend Extrapolation based on Section 3.2 and 3.4.2 of the paper.
     """
     def __init__(self, base_year=2008):
         self.base_year = base_year
 
     def standardize_param(self, series):
-        """执行 Min-Max 标准化，确保跨国数据可比性 [cite: 345]"""
+        """
+        Applies Min-Max Normalization to ensure cross-national comparability.
+        """
         return (series - series.min()) / (series.max() - series.min())
 
     def apply_hp_filter(self, series, lamb=1600):
-        """执行统一的 HP 滤波处理协议 [cite: 1674]"""
+        """
+        Applies the Hodrick-Prescott (HP) filter for trend decomposition.
+        """
         cycle, trend = hpfilter(series, lamb=lamb)
         return trend
 
     def calculate_basic_params(self, gdp, m2, investment, trust_score, public_exp):
         """
-        计算论文定义的基础参数：
-        M: 物质资本极 (Fixed Asset Investment / GDP) [cite: 314]
-        C: 能量流动极 (GDP / M2) [cite: 320]
-        Phi: 信息结构极宏观分量 (标准化社会信赖得分) [cite: 330]
-        eta: 劳动收入转换率 (公共支出 / GDP) [cite: 335]
+        Calculates basic parameters:
+        M: Material Capital Pole (Fixed Asset Investment / GDP)
+        C: Energy Flow Pole (GDP / M2)
+        Phi: Information Structure Pole - Macro (Normalized Trust Score)
+        eta: Labor Income Conversion Rate (Public Expenditure / GDP)
         """
         M = investment / gdp
         C = gdp / m2
@@ -35,8 +39,8 @@ class DataPreprocessor:
 
     def trend_extrapolation_2025(self, historical_data, target_gdp_2025):
         """
-        实现 3.4.2 节所述的 2025 趋势外推法
-        基于产业结构系数相对稳定假设进行比例估算 [cite: 439, 441]
+        Implements the 2025 Trend Extrapolation Method (Section 3.4.2).
+        Estimated based on the assumption of stable structural coefficients.
         """
         structural_coeff = historical_data.iloc[-1] / historical_data.iloc[-1].sum()
         estimated_2025 = structural_coeff * target_gdp_2025
